@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nurse Shift Scheduler</title>
+<style>
+  :root {
+    --teal: #0f766e;
+    --teal-dark: #0b5a54;
+    --teal-light: #e6f4f3;
+    --bg: #f4f7f8;
+    --card: #ffffff;
+    --border: #dbe3e6;
+    --text: #1f2d2f;
+    --muted: #5b6e72;
+    --danger: #dc2626;
+    --danger-bg: #fdecec;
+    --warn: #b45309;
+    --warn-bg: #fef3e0;
+    --ok: #15803d;
+    --shadow: 0 1px 3px rgba(15,45,45,0.08), 0 1px 2px rgba(15,45,45,0.06);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  body { padding-bottom: 60px; }
+  h1, h2, h3 { margin: 0 0 8px 0; font-weight: 700; }
+  h1 { font-size: 26px; }
+  h2 { font-size: 19px; color: var(--teal-dark); }
+  p.hint { color: var(--muted); margin: 0 0 14px 0; font-size: 14px; }
+
+  header.top {
+    background: linear-gradient(135deg, var(--teal), var(--teal-dark));
+    color: #fff;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header.top .title-block h1 { color: #fff; margin: 0; }
+  header.top .title-block p { margin: 2px 0 0 0; color: #d8f0ee; font-size: 14px; }
+  header.top .save-indicator {
+    font-size: 13px;
+    background: rgba(255,255,255,0.15);
+    padding: 6px 12px;
+    border-radius: 20px;
+  }
+
+  main { max-width: 1100px; margin: 20px auto; padding: 0 16px; display: flex; flex-direction: column; gap: 18px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+  }
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--teal);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    padding: 9px 14px;
+    font-weight: 600;
+    transition: background 0.15s, transform 0.05s;
+  }
+  button:hover { background: #f0f4f4; }
+  button:active { transform: scale(0.98); }
+  button.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+  button.primary:hover { background: var(--teal-dark); }
+  button.danger { color: var(--danger); border-color: #f3c9c9; }
+  button.danger:hover { background: var(--danger-bg); }
+  button.small { padding: 5px 9px; font-size: 13px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  input[type="text"], input[type="number"], input[type="time"], input[type="date"], select {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: #fff;
+    color: var(--text);
+  }
+  label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 3px; }
+  .field { display: flex; flex-direction: column; gap: 2px; }
+
+  table { border-collapse: collapse; width: 100%; }
+  th, td { padding: 8px; text-align: left; vertical-align: top; }
+
+  /* --- Nurse roster --- */
+  #nurse-add-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px dashed var(--border); }
+  #nurse-add-form input[type="text"] { width: 180px; }
+  #nurse-add-form input[type="number"] { width: 90px; }
+  .nurse-table-wrap { overflow-x: auto; }
+  #nurse-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); border-bottom: 2px solid var(--border); }
+  #nurse-table td { border-bottom: 1px solid var(--border); }
+  #nurse-table input[type="number"] { width: 70px; }
+  #nurse-table input[type="text"] { width: 160px; }
+  .empty-row td { color: var(--muted); font-style: italic; padding: 14px 8px; }
+
+  /* --- Shift types --- */
+  .shifttype-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; padding: 10px; border-radius: 8px; background: #fafcfc; border: 1px solid var(--border); flex-wrap: wrap; }
+  .shifttype-row .swatch { width: 16px; height: 16px; border-radius: 4px; margin-bottom: 8px; flex-shrink: 0; align-self: center; }
+  .shifttype-row input[type="text"] { width: 140px; }
+
+  /* --- Requirements grid --- */
+  .req-grid-wrap, .schedule-grid-wrap { overflow-x: auto; }
+  #req-table th, #req-table td { text-align: center; border: 1px solid var(--border); }
+  #req-table th { background: var(--teal-light); font-size: 13px; }
+  #req-table td:first-child, #req-table th:first-child { text-align: left; position: sticky; left: 0; background: #fff; z-index: 1; }
+  #req-table th:first-child { background: var(--teal-light); }
+  #req-table input[type="number"] { width: 55px; text-align: center; }
+  .weekstart-row { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
+
+  /* --- Actions bar --- */
+  .actions-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .actions-bar .spacer { flex: 1; }
+  .stat-pill { font-size: 13px; padding: 6px 12px; border-radius: 20px; background: var(--teal-light); color: var(--teal-dark); font-weight: 600; }
+  .stat-pill.warn { background: var(--warn-bg); color: var(--warn); }
+
+  /* --- Schedule grid --- */
+  #schedule-table { border: 1px solid var(--border); }
+  #schedule-table th { background: var(--teal-light); font-size: 13px; padding: 10px 8px; border: 1px solid var(--border); }
+  #schedule-table td { border: 1px solid var(--border); padding: 6px; min-width: 150px; vertical-align: top; }
+  #schedule-table td.shift-cell { background: #fff; }
+  #schedule-table td.shift-cell.understaffed { background: var(--danger-bg); }
+  .shift-type-label { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+  .cell-need { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .cell-need.understaffed-text { color: var(--danger); font-weight: 700; }
+  .chip-list { display: flex; flex-direction: column; gap: 4px; min-height: 6px; }
+  .chip {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    background: var(--teal-light);
+    border: 1px solid #bfe2df;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 13px;
+    cursor: grab;
+  }
+  .chip.warn { background: var(--warn-bg); border-color: #f0d199; }
+  .chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip .chip-remove { background: none; border: none; padding: 0 2px; font-size: 13px; color: var(--muted); font-weight: 700; }
+  .chip .chip-remove:hover { color: var(--danger); }
+  .chip.drag-over-ghost { opacity: 0.4; }
+  td.shift-cell.drop-target { outline: 2px dashed var(--teal); outline-offset: -3px; }
+  .add-nurse-select { width: 100%; margin-top: 4px; font-size: 12px; padding: 5px; }
+
+  /* --- Summary --- */
+  #summary-table th { font-size: 12px; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--border); text-align: left; padding: 6px 8px; }
+  #summary-table td { border-bottom: 1px solid var(--border); padding: 6px 8px; }
+  .bar-track { background: var(--teal-light); border-radius: 6px; height: 10px; width: 140px; overflow: hidden; display: inline-block; vertical-align: middle; }
+  .bar-fill { background: var(--teal); height: 100%; }
+  .bar-fill.over { background: var(--danger); }
+
+  /* --- Toast --- */
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #1f2d2f; color: #fff; padding: 12px 20px; border-radius: 10px;
+    font-size: 14px; box-shadow: var(--shadow); opacity: 0; pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s; max-width: 90vw; text-align: center; z-index: 50;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+  /* --- Help panel --- */
+  #help-body ol { padding-left: 20px; margin: 6px 0; }
+  #help-body li { margin-bottom: 6px; }
+
+  .no-print { }
+  @media print {
+    header.top, .no-print, #toast { display: none !important; }
+    body { padding: 0; background: #fff; }
+    main { max-width: 100%; margin: 0; padding: 0; }
+    .card { box-shadow: none; border: none; padding: 4px 0; }
+    #schedule-section .card-head button, #schedule-section .card-head p { display: none; }
+    .chip { background: #fff !important; border: 1px solid #999; }
+    .chip .chip-remove, .add-nurse-select { display: none !important; }
+    #schedule-table td.shift-cell.understaffed { background: #fdecec !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #print-header { display: block !important; margin-bottom: 14px; }
+    #summary-section { page-break-before: always; }
+  }
+  #print-header { display: none; }
+
+  @media (max-width: 640px) {
+    header.top { padding: 14px; }
+    h1 { font-size: 21px; }
+    main { margin: 14px auto; }
+    .card { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="title-block">
+    <h1>🩺 Nurse Shift Scheduler</h1>
+    <p>Build a fair, rule-respecting weekly schedule in minutes</p>
+  </div>
+  <div class="save-indicator" id="save-indicator">All changes saved on this device</div>
+</header>
+
+<main>
+
+  <div class="card no-print" id="help-card">
+    <div class="card-head">
+      <h2>How this works</h2>
+      <button class="small" data-action="toggle-help" id="help-toggle-btn">Show steps</button>
+    </div>
+    <div id="help-body" style="display:none;">
+      <ol>
+        <li><strong>Add your nurses</strong> below, with how many shifts they can work per week and how many hours of rest they need between shifts.</li>
+        <li><strong>Set up your shift types</strong> (Morning / Evening / Night are ready to go — edit the times if needed, or add your own).</li>
+        <li><strong>Enter staffing needs</strong> — how many nurses you need for each shift, each day of the week.</li>
+        <li>Click <strong>Generate Schedule</strong>. The tool fills the week automatically and fairly, respecting rest rules and weekly limits.</li>
+        <li><strong>Fine-tune it</strong> — drag a nurse's name between shifts, or use the "+ Add nurse" box on any shift. Cells outlined in red don't have enough staff yet.</li>
+        <li>When you're happy with it, click <strong>Print</strong> for a wall-ready schedule, or <strong>Export CSV</strong> to open it in Excel.</li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- STEP 1: Nurses -->
+  <div class="card">
+    <div class="card-head">
+      <h2><span class="step-badge">1</span>Nurses</h2>
+    </div>
+    <p class="hint">Add each nurse on your team, their maximum shifts per week, and the minimum rest (in hours) they need between two shifts.</p>
+    <div id="nurse-add-form" class="no-print">
+      <div class="field">
+        <label for="nurse-name-input">Nurse name</label>
+        <input type="text" id="nurse-name-input" placeholder="e.g. Jane Doe">
+      </div>
+      <div class="field">
+        <label for="nurse-max-input">Max shifts / week</label>
+        <input type="number" id="nurse-max-input" value="5" min="0" max="14">
+      </div>
+      <div class="field">
+        <label for="nurse-rest-input">Min rest (hours)</label>
+        <input type="number" id="nurse-rest-input" value="11" min="0" max="48">
+      </div>
+      <button class="primary" data-action="add-nurse">+ Add Nurse</button>
+    </div>
+    <div class="nurse-table-wrap">
+      <table id="nurse-table">
+        <thead>
+          <tr><th>Name</th><th>Max shifts / week</th><th>Min rest (hrs)</th><th>Assigned this week</th><th></th></tr>
+        </thead>
+        <tbody id="nurse-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STEP 2: Shift types -->
+  <div class="card">
+    <div class="card-head">
+      <h2><span class="step-badge">2</span>Shift Types</h2>
+    </div>
+    <p class="hint">Default shifts are ready to use. Edit the times to match your unit, or add a custom shift.</p>
+    <div id="shifttype-list"></div>
+    <button class="no-print" data-action="add-shifttype">+ Add Shift Type</button>
+  </div>
+
+  <!-- STEP 3: Staffing needs -->
+  <div class="card">
+    <div class="card-head">
+      <h2><span class="step-badge">3</span>Staffing Needs for the Week</h2>
+    </div>
+    <p class="hint">Choose the week's start date, then enter how many nurses are needed for each shift, each day.</p>
+    <div class="weekstart-row no-print">
+      <div class="field">
+        <label for="weekstart-input">Week starts on</label>
+        <input type="date" id="weekstart-input">
+      </div>
+      <div class="field">
+        <label for="title-input">Schedule title (optional)</label>
+        <input type="text" id="title-input" placeholder="e.g. Ward 4B">
+      </div>
+    </div>
+    <div class="req-grid-wrap">
+      <table id="req-table"></table>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="card actions-bar no-print">
+    <button class="primary" data-action="generate">⚡ Generate Schedule</button>
+    <button data-action="clear-schedule">Clear Schedule</button>
+    <div class="spacer"></div>
+    <span id="coverage-pill" class="stat-pill"></span>
+    <button data-action="print">🖨 Print</button>
+    <button data-action="export-csv">⬇ Export CSV</button>
+  </div>
+
+  <!-- STEP 4: Schedule grid -->
+  <div class="card" id="schedule-section">
+    <div id="print-header">
+      <h1 id="print-title" style="color:var(--teal-dark);"></h1>
+      <p id="print-subtitle" style="color:var(--muted);"></p>
+    </div>
+    <div class="card-head">
+      <h2><span class="step-badge">4</span>Weekly Schedule</h2>
+      <p class="hint" style="margin:0;">Drag a name to move it, or use "+ Add nurse" on a shift. ⚠ marks a rule conflict.</p>
+    </div>
+    <div class="schedule-grid-wrap">
+      <table id="schedule-table"></table>
+    </div>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="card" id="summary-section">
+    <h2>Weekly Totals per Nurse</h2>
+    <p class="hint">A quick fairness check — how many shifts each nurse has this week.</p>
+    <table id="summary-table">
+      <thead><tr><th>Nurse</th><th>Shifts assigned</th><th>Max allowed</th><th></th></tr></thead>
+      <tbody id="summary-table-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card no-print" style="text-align:center;">
+    <button class="danger small" data-action="reset-all">Reset All Data (start a brand-new schedule)</button>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'nurseShiftSchedulerState_v1';
+  var DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  var SHIFT_COLORS = ['#f59e0b', '#3b82f6', '#6366f1', '#ec4899', '#10b981', '#8b5cf6', '#ef4444'];
+
+  function uid() {
+    return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+  }
+
+  function defaultState() {
+    var today = new Date();
+    var day = today.getDay();
+    var diffToMonday = (day === 0 ? -6 : 1) - day;
+    var monday = new Date(today);
+    monday.setDate(today.getDate() + diffToMonday);
+    var iso = monday.toISOString().slice(0, 10);
+
+    var shiftTypes = [
+      { id: uid(), name: 'Morning', start: '07:00', end: '15:00', color: SHIFT_COLORS[0] },
+      { id: uid(), name: 'Evening', start: '15:00', end: '23:00', color: SHIFT_COLORS[1] },
+      { id: uid(), name: 'Night', start: '23:00', end: '07:00', color: SHIFT_COLORS[2] }
+    ];
+
+    var requirements = {};
+    for (var d = 0; d < 7; d++) {
+      requirements[d] = {};
+      shiftTypes.forEach(function (st) { requirements[d][st.id] = 2; });
+    }
+
+    return {
+      title: '',
+      weekStart: iso,
+      nurses: [],
+      shiftTypes: shiftTypes,
+      requirements: requirements,
+      schedule: {}
+    };
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return defaultState();
+      var parsed = JSON.parse(raw);
+      if (!parsed || !parsed.shiftTypes || !parsed.nurses) return defaultState();
+      return parsed;
+    } catch (e) {
+      return defaultState();
+    }
+  }
+
+  var state = load();
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      var ind = document.getElementById('save-indicator');
+      ind.textContent = 'All changes saved on this device';
+    } catch (e) {
+      var ind2 = document.getElementById('save-indicator');
+      ind2.textContent = 'Could not save (storage unavailable)';
+    }
+  }
+
+  // ---------- Shape consistency helpers ----------
+  function ensureShape() {
+    for (var d = 0; d < 7; d++) {
+      if (!state.requirements[d]) state.requirements[d] = {};
+      if (!state.schedule[d]) state.schedule[d] = {};
+      state.shiftTypes.forEach(function (st) {
+        if (typeof state.requirements[d][st.id] !== 'number') state.requirements[d][st.id] = 0;
+        if (!Array.isArray(state.schedule[d][st.id])) state.schedule[d][st.id] = [];
+      });
+      // drop schedule/requirement entries for shift types that no longer exist
+      var validIds = state.shiftTypes.map(function (st) { return st.id; });
+      Object.keys(state.schedule[d]).forEach(function (id) {
+        if (validIds.indexOf(id) === -1) delete state.schedule[d][id];
+      });
+      Object.keys(state.requirements[d]).forEach(function (id) {
+        if (validIds.indexOf(id) === -1) delete state.requirements[d][id];
+      });
+    }
+    // drop nurse ids from schedule that no longer exist in roster
+    var nurseIds = state.nurses.map(function (n) { return n.id; });
+    for (var d2 = 0; d2 < 7; d2++) {
+      state.shiftTypes.forEach(function (st) {
+        state.schedule[d2][st.id] = state.schedule[d2][st.id].filter(function (nid) {
+          return nurseIds.indexOf(nid) !== -1;
+        });
+      });
+    }
+  }
+
+  // ---------- Time / scheduling math ----------
+  function parseTime(t) {
+    var parts = t.split(':');
+    var h = parseInt(parts[0], 10) || 0;
+    var m = parseInt(parts[1], 10) || 0;
+    return h + m / 60;
+  }
+
+  function shiftAbsTimes(day, shiftType) {
+    var startH = parseTime(shiftType.start);
+    var endH = parseTime(shiftType.end);
+    if (endH <= startH) endH += 24;
+    return { start: day * 24 + startH, end: day * 24 + endH };
+  }
+
+  function fmtHours(h) {
+    return (Math.round(h * 10) / 10).toString();
+  }
+
+  function getNurseShiftInstances(nurseId, excludeDay, excludeShiftId) {
+    var list = [];
+    for (var day = 0; day < 7; day++) {
+      state.shiftTypes.forEach(function (st) {
+        if (day === excludeDay && st.id === excludeShiftId) return;
+        var assigned = (state.schedule[day] && state.schedule[day][st.id]) || [];
+        if (assigned.indexOf(nurseId) !== -1) {
+          var t = shiftAbsTimes(day, st);
+          list.push({ day: day, shiftTypeId: st.id, start: t.start, end: t.end });
+        }
+      });
+    }
+    list.sort(function (a, b) { return a.start - b.start; });
+    return list;
+  }
+
+  function getChipWarnings(nurseId, day, shiftTypeId) {
+    var nurse = state.nurses.filter(function (n) { return n.id === nurseId; })[0];
+    if (!nurse) return [];
+    var shiftType = state.shiftTypes.filter(function (s) { return s.id === shiftTypeId; })[0];
+    if (!shiftType) return [];
+    var thisShift = shiftAbsTimes(day, shiftType);
+    var others = getNurseShiftInstances(nurseId, day, shiftTypeId);
+    var warnings = [];
+
+    if (others.some(function (o) { return o.day === day; })) {
+      warnings.push('Already working another shift this day');
+    }
+
+    var totalCount = others.length + 1;
+    if (totalCount > nurse.maxShifts) {
+      warnings.push('Exceeds max shifts (' + totalCount + '/' + nurse.maxShifts + ')');
+    }
+
+    var before = others.filter(function (o) { return o.end <= thisShift.start; })
+      .sort(function (a, b) { return b.end - a.end; })[0];
+    if (before) {
+      var gapB = thisShift.start - before.end;
+      if (gapB < nurse.minRest) warnings.push('Only ' + fmtHours(gapB) + 'h rest before (needs ' + nurse.minRest + 'h)');
+    }
+
+    var after = others.filter(function (o) { return o.start >= thisShift.end; })
+      .sort(function (a, b) { return a.start - b.start; })[0];
+    if (after) {
+      var gapA = after.start - thisShift.end;
+      if (gapA < nurse.minRest) warnings.push('Only ' + fmtHours(gapA) + 'h rest after (needs ' + nurse.minRest + 'h)');
+    }
+
+    return warnings;
+  }
+
+  function isEligible(nurseId, day, shiftType, counts) {
+    var nurse = state.nurses.filter(function (n) { return n.id === nurseId; })[0];
+    if (!nurse) return false;
+    if (counts[nurseId] >= nurse.maxShifts) return false;
+    var thisShift = shiftAbsTimes(day, shiftType);
+    var instances = getNurseShiftInstances(nurseId);
+    if (instances.some(function (o) { return o.day === day; })) return false;
+    for (var i = 0; i < instances.length; i++) {
+      var o = instances[i];
+      if (o.end <= thisShift.start) {
+        if (thisShift.start - o.end < nurse.minRest) return false;
+      } else if (o.start >= thisShift.end) {
+        if (o.start - thisShift.end < nurse.minRest) return false;
+      } else {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
+  }
+
+  function generateSchedule() {
+    var hasExisting = false;
+    for (var d = 0; d < 7; d++) {
+      for (var k in state.schedule[d]) {
+        if (state.schedule[d][k] && state.schedule[d][k].length) hasExisting = true;
+      }
+    }
+    if (hasExisting && !confirm('This will replace the current schedule with a freshly generated one. Continue?')) return;
+    if (state.nurses.length === 0) {
+      toast('Add at least one nurse before generating a schedule.');
+      return;
+    }
+
+    var schedule = {};
+    for (var day = 0; day < 7; day++) {
+      schedule[day] = {};
+      state.shiftTypes.forEach(function (st) { schedule[day][st.id] = []; });
+    }
+    state.schedule = schedule;
+
+    var counts = {};
+    state.nurses.forEach(function (n) { counts[n.id] = 0; });
+
+    var orderedShiftTypes = state.shiftTypes.slice().sort(function (a, b) {
+      return parseTime(a.start) - parseTime(b.start);
+    });
+
+    var understaffed = 0;
+    for (var day2 = 0; day2 < 7; day2++) {
+      orderedShiftTypes.forEach(function (st) {
+        var needed = (state.requirements[day2] && state.requirements[day2][st.id]) || 0;
+        if (needed === 0) return;
+        var candidates = state.nurses.filter(function (n) { return isEligible(n.id, day2, st, counts); });
+        candidates = shuffle(candidates).sort(function (a, b) { return counts[a.id] - counts[b.id]; });
+        var chosen = candidates.slice(0, needed);
+        chosen.forEach(function (n) {
+          state.schedule[day2][st.id].push(n.id);
+          counts[n.id]++;
+        });
+        if (chosen.length < needed) understaffed++;
+      });
+    }
+
+    save();
+    render();
+    toast(understaffed
+      ? 'Schedule generated — ' + understaffed + ' shift(s) still need more staff (shown in red).'
+      : 'Schedule generated — every shift is fully staffed.');
+  }
+
+  // ---------- Rendering ----------
+  function el(html) {
+    var t = document.createElement('template');
+    t.innerHTML = html.trim();
+    return t.content.firstElementChild;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function weekDates() {
+    var start = new Date(state.weekStart + 'T00:00:00');
+    var out = [];
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(start);
+      d.setDate(start.getDate() + i);
+      out.push(d);
+    }
+    return out;
+  }
+  function fmtDate(d) {
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+
+  function renderNurses() {
+    var body = document.getElementById('nurse-table-body');
+    if (state.nurses.length === 0) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="5">No nurses added yet. Use the form above to add your first nurse.</td></tr>';
+      return;
+    }
+    var assignedCounts = {};
+    state.nurses.forEach(function (n) { assignedCounts[n.id] = getNurseShiftInstances(n.id).length; });
+
+    body.innerHTML = state.nurses.map(function (n) {
+      var count = assignedCounts[n.id];
+      var over = count > n.maxShifts;
+      return '<tr>' +
+        '<td><input type="text" value="' + escapeHtml(n.name) + '" data-change="nurse-name" data-id="' + n.id + '"></td>' +
+        '<td><input type="number" min="0" max="14" value="' + n.maxShifts + '" data-change="nurse-max" data-id="' + n.id + '"></td>' +
+        '<td><input type="number" min="0" max="48" value="' + n.minRest + '" data-change="nurse-rest" data-id="' + n.id + '"></td>' +
+        '<td>' + count + (over ? ' <span style="color:var(--danger);font-weight:700;">⚠ over limit</span>' : '') + '</td>' +
+        '<td class="no-print"><button class="small danger" data-action="remove-nurse" data-id="' + n.id + '">Remove</button></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function renderShiftTypes() {
+    var wrap = document.getElementById('shifttype-list');
+    wrap.innerHTML = state.shiftTypes.map(function (st) {
+      return '<div class="shifttype-row">' +
+        '<span class="swatch" style="background:' + st.color + '"></span>' +
+        '<div class="field"><label>Name</label><input type="text" value="' + escapeHtml(st.name) + '" data-change="shift-name" data-id="' + st.id + '"></div>' +
+        '<div class="field"><label>Start</label><input type="time" value="' + st.start + '" data-change="shift-start" data-id="' + st.id + '"></div>' +
+        '<div class="field"><label>End</label><input type="time" value="' + st.end + '" data-change="shift-end" data-id="' + st.id + '"></div>' +
+        '<button class="small danger no-print" data-action="remove-shifttype" data-id="' + st.id + '"' + (state.shiftTypes.length <= 1 ? ' disabled title="At least one shift type is required"' : '') + '>Remove</button>' +
+        '</div>';
+    }).join('');
+  }
+
+  function renderRequirements() {
+    var table = document.getElementById('req-table');
+    var dates = weekDates();
+    var head = '<thead><tr><th>Shift</th>' + dates.map(function (d, i) {
+      return '<th>' + DAY_NAMES[i] + '<br>' + fmtDate(d) + '</th>';
+    }).join('') + '</tr></thead>';
+
+    var body = '<tbody>' + state.shiftTypes.map(function (st) {
+      var row = '<tr><td><span class="shift-type-label"><span class="swatch" style="background:' + st.color + ';width:12px;height:12px;display:inline-block;border-radius:3px;"></span>' + escapeHtml(st.name) + '</td>';
+      for (var d = 0; d < 7; d++) {
+        var val = state.requirements[d][st.id] || 0;
+        row += '<td><input type="number" min="0" max="30" value="' + val + '" data-change="requirement" data-day="' + d + '" data-shift="' + st.id + '"></td>';
+      }
+      row += '</tr>';
+      return row;
+    }).join('') + '</tbody>';
+
+    table.innerHTML = head + body;
+  }
+
+  function coverageStats() {
+    var needed = 0, filled = 0, understaffed = 0;
+    for (var d = 0; d < 7; d++) {
+      state.shiftTypes.forEach(function (st) {
+        var n = state.requirements[d][st.id] || 0;
+        var f = (state.schedule[d] && state.schedule[d][st.id] && state.schedule[d][st.id].length) || 0;
+        needed += n;
+        filled += Math.min(f, n);
+        if (f < n) understaffed++;
+      });
+    }
+    return { needed: needed, filled: filled, understaffed: understaffed };
+  }
+
+  function renderScheduleGrid() {
+    var table = document.getElementById('schedule-table');
+    var dates = weekDates();
+    var head = '<thead><tr><th>Shift</th>' + dates.map(function (d, i) {
+      return '<th>' + DAY_NAMES[i] + '<br>' + fmtDate(d) + '</th>';
+    }).join('') + '</tr></thead>';
+
+    var body = '<tbody>' + state.shiftTypes.map(function (st) {
+      var row = '<tr><td><span class="shift-type-label"><span class="swatch" style="background:' + st.color + ';width:12px;height:12px;display:inline-block;border-radius:3px;"></span>' + escapeHtml(st.name) + '<br><small style="color:var(--muted);font-weight:400;">' + st.start + '–' + st.end + '</small></span></td>';
+
+      for (var d = 0; d < 7; d++) {
+        var needed = state.requirements[d][st.id] || 0;
+        var assigned = (state.schedule[d] && state.schedule[d][st.id]) || [];
+        var isUnder = assigned.length < needed;
+
+        var chips = assigned.map(function (nid) {
+          var nurse = state.nurses.filter(function (n) { return n.id === nid; })[0];
+          if (!nurse) return '';
+          var warnings = getChipWarnings(nid, d, st.id);
+          var warnClass = warnings.length ? ' warn' : '';
+          var title = warnings.length ? ' title="' + escapeHtml(warnings.join('; ')) + '"' : '';
+          var warnIcon = warnings.length ? '⚠ ' : '';
+          return '<div class="chip' + warnClass + '" draggable="true" data-nurse="' + nid + '" data-day="' + d + '" data-shift="' + st.id + '"' + title + '>' +
+            '<span class="chip-name">' + warnIcon + escapeHtml(nurse.name) + '</span>' +
+            '<button class="chip-remove no-print" data-action="remove-assignment" data-nurse="' + nid + '" data-day="' + d + '" data-shift="' + st.id + '" title="Remove">✕</button>' +
+            '</div>';
+        }).join('');
+
+        var availableNurses = state.nurses.filter(function (n) { return assigned.indexOf(n.id) === -1; });
+        var selectOptions = '<option value="">+ Add nurse...</option>' + availableNurses.map(function (n) {
+          var warnings = getChipWarnings(n.id, d, st.id);
+          var label = n.name + (warnings.length ? ' (⚠ ' + warnings[0] + ')' : '');
+          return '<option value="' + n.id + '">' + escapeHtml(label) + '</option>';
+        }).join('');
+        var select = availableNurses.length
+          ? '<select class="add-nurse-select no-print" data-change="add-nurse-to-shift" data-day="' + d + '" data-shift="' + st.id + '">' + selectOptions + '</select>'
+          : '';
+
+        row += '<td class="shift-cell' + (isUnder ? ' understaffed' : '') + '" data-day="' + d + '" data-shift="' + st.id + '">' +
+          '<div class="cell-need' + (isUnder ? ' understaffed-text' : '') + '">Need ' + needed + (isUnder ? ' — ' + (needed - assigned.length) + ' short' : '') + '</div>' +
+          '<div class="chip-list">' + chips + '</div>' +
+          select +
+          '</td>';
+      }
+      row += '</tr>';
+      return row;
+    }).join('') + '</tbody>';
+
+    table.innerHTML = head + body;
+
+    var cov = coverageStats();
+    var pill = document.getElementById('coverage-pill');
+    pill.className = 'stat-pill' + (cov.understaffed ? ' warn' : '');
+    pill.textContent = cov.filled + ' / ' + cov.needed + ' shifts filled' + (cov.understaffed ? ' — ' + cov.understaffed + ' slot(s) short' : ' — fully staffed');
+
+    var titleText = state.title ? state.title : 'Weekly Nurse Schedule';
+    document.getElementById('print-title').textContent = titleText;
+    document.getElementById('print-subtitle').textContent =
+      'Week of ' + dates[0].toDateString() + ' – ' + dates[6].toDateString() + '  •  Printed ' + new Date().toLocaleString();
+  }
+
+  function renderSummary() {
+    var body = document.getElementById('summary-table-body');
+    if (state.nurses.length === 0) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="4">No nurses yet.</td></tr>';
+      return;
+    }
+    body.innerHTML = state.nurses.map(function (n) {
+      var count = getNurseShiftInstances(n.id).length;
+      var pct = n.maxShifts > 0 ? Math.min(100, Math.round((count / n.maxShifts) * 100)) : 0;
+      var over = count > n.maxShifts;
+      return '<tr>' +
+        '<td>' + escapeHtml(n.name) + '</td>' +
+        '<td>' + count + '</td>' +
+        '<td>' + n.maxShifts + '</td>' +
+        '<td><span class="bar-track"><span class="bar-fill' + (over ? ' over' : '') + '" style="width:' + pct + '%;"></span></span></td>' +
+        '</tr>';
+    }).join('');
+  }
+
+  function render() {
+    ensureShape();
+    renderNurses();
+    renderShiftTypes();
+    renderRequirements();
+    renderScheduleGrid();
+    renderSummary();
+  }
+
+  // ---------- Toast ----------
+  var toastTimer = null;
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 3800);
+  }
+
+  // ---------- CSV export ----------
+  function exportCsv() {
+    var dates = weekDates();
+    var rows = [['Nurse'].concat(dates.map(function (d, i) { return DAY_NAMES[i] + ' ' + fmtDate(d); }))];
+
+    state.nurses.forEach(function (n) {
+      var row = [n.name];
+      for (var d = 0; d < 7; d++) {
+        var shiftsToday = state.shiftTypes.filter(function (st) {
+          return (state.schedule[d][st.id] || []).indexOf(n.id) !== -1;
+        }).map(function (st) { return st.name; });
+        row.push(shiftsToday.join(' + '));
+      }
+      rows.push(row);
+    });
+
+    rows.push([]);
+    rows.push(['Shift', 'Day', 'Needed', 'Assigned', 'Nurses']);
+    for (var d2 = 0; d2 < 7; d2++) {
+      state.shiftTypes.forEach(function (st) {
+        var assigned = state.schedule[d2][st.id] || [];
+        var names = assigned.map(function (nid) {
+          var nn = state.nurses.filter(function (n) { return n.id === nid; })[0];
+          return nn ? nn.name : '';
+        });
+        var needed = state.requirements[d2][st.id] || 0;
+        rows.push([st.name, DAY_NAMES[d2] + ' ' + fmtDate(dates[d2]), needed, assigned.length, names.join('; ')]);
+      });
+    }
+
+    var csv = rows.map(function (r) {
+      return r.map(function (cell) {
+        var s = String(cell == null ? '' : cell);
+        if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      }).join(',');
+    }).join('\r\n');
+
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var namePart = (state.title || 'nurse-schedule').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    a.href = url;
+    a.download = namePart + '_' + state.weekStart + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('CSV downloaded.');
+  }
+
+  // ---------- Event delegation ----------
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.dataset.action;
+
+    if (action === 'add-nurse') {
+      var nameInput = document.getElementById('nurse-name-input');
+      var maxInput = document.getElementById('nurse-max-input');
+      var restInput = document.getElementById('nurse-rest-input');
+      var name = nameInput.value.trim();
+      if (!name) { toast('Enter a nurse name first.'); nameInput.focus(); return; }
+      state.nurses.push({
+        id: uid(),
+        name: name,
+        maxShifts: Math.max(0, parseInt(maxInput.value, 10) || 0),
+        minRest: Math.max(0, parseInt(restInput.value, 10) || 0)
+      });
+      nameInput.value = '';
+      nameInput.focus();
+      save(); render();
+    } else if (action === 'remove-nurse') {
+      var id = btn.dataset.id;
+      var nurse = state.nurses.filter(function (n) { return n.id === id; })[0];
+      if (!nurse || !confirm('Remove ' + nurse.name + '? This will also remove them from any shifts.')) return;
+      state.nurses = state.nurses.filter(function (n) { return n.id !== id; });
+      save(); render();
+    } else if (action === 'add-shifttype') {
+      var color = SHIFT_COLORS[state.shiftTypes.length % SHIFT_COLORS.length];
+      var newId = uid();
+      state.shiftTypes.push({ id: newId, name: 'New Shift', start: '08:00', end: '16:00', color: color });
+      for (var d = 0; d < 7; d++) { state.requirements[d][newId] = 0; }
+      save(); render();
+    } else if (action === 'remove-shifttype') {
+      if (state.shiftTypes.length <= 1) return;
+      var sid = btn.dataset.id;
+      var st = state.shiftTypes.filter(function (s) { return s.id === sid; })[0];
+      if (!st || !confirm('Remove the "' + st.name + '" shift type? This will remove its staffing needs and assignments.')) return;
+      state.shiftTypes = state.shiftTypes.filter(function (s) { return s.id !== sid; });
+      save(); render();
+    } else if (action === 'generate') {
+      generateSchedule();
+    } else if (action === 'clear-schedule') {
+      if (!confirm('Clear all current shift assignments for this week?')) return;
+      for (var dd = 0; dd < 7; dd++) {
+        state.shiftTypes.forEach(function (st2) { state.schedule[dd][st2.id] = []; });
+      }
+      save(); render();
+      toast('Schedule cleared.');
+    } else if (action === 'remove-assignment') {
+      var nid = btn.dataset.nurse, day = parseInt(btn.dataset.day, 10), shift = btn.dataset.shift;
+      state.schedule[day][shift] = state.schedule[day][shift].filter(function (x) { return x !== nid; });
+      save(); render();
+    } else if (action === 'print') {
+      window.print();
+    } else if (action === 'export-csv') {
+      exportCsv();
+    } else if (action === 'toggle-help') {
+      var body = document.getElementById('help-body');
+      var visible = body.style.display !== 'none';
+      body.style.display = visible ? 'none' : 'block';
+      btn.textContent = visible ? 'Show steps' : 'Hide steps';
+    } else if (action === 'reset-all') {
+      if (!confirm('This will permanently delete all nurses, shift types, and schedule data on this device. Continue?')) return;
+      if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      state = defaultState();
+      document.getElementById('weekstart-input').value = state.weekStart;
+      document.getElementById('title-input').value = state.title || '';
+      save(); render();
+      toast('Everything has been reset.');
+    }
+  });
+
+  document.addEventListener('change', function (e) {
+    var t = e.target;
+    var change = t.dataset ? t.dataset.change : null;
+    if (!change) return;
+
+    if (change === 'nurse-name') {
+      var n = state.nurses.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (n) { n.name = t.value.trim() || n.name; save(); renderScheduleGrid(); renderSummary(); }
+    } else if (change === 'nurse-max') {
+      var n2 = state.nurses.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (n2) { n2.maxShifts = Math.max(0, parseInt(t.value, 10) || 0); save(); render(); }
+    } else if (change === 'nurse-rest') {
+      var n3 = state.nurses.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (n3) { n3.minRest = Math.max(0, parseInt(t.value, 10) || 0); save(); render(); }
+    } else if (change === 'shift-name') {
+      var st = state.shiftTypes.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (st) { st.name = t.value.trim() || st.name; save(); render(); }
+    } else if (change === 'shift-start') {
+      var st2 = state.shiftTypes.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (st2) { st2.start = t.value; save(); render(); }
+    } else if (change === 'shift-end') {
+      var st3 = state.shiftTypes.filter(function (x) { return x.id === t.dataset.id; })[0];
+      if (st3) { st3.end = t.value; save(); render(); }
+    } else if (change === 'requirement') {
+      var day = parseInt(t.dataset.day, 10), shift = t.dataset.shift;
+      state.requirements[day][shift] = Math.max(0, parseInt(t.value, 10) || 0);
+      save(); renderScheduleGrid();
+    } else if (change === 'add-nurse-to-shift') {
+      var nid = t.value;
+      if (!nid) return;
+      var day2 = parseInt(t.dataset.day, 10), shift2 = t.dataset.shift;
+      if (state.schedule[day2][shift2].indexOf(nid) === -1) {
+        state.schedule[day2][shift2].push(nid);
+        save(); render();
+      }
+    } else if (t.id === 'weekstart-input') {
+      state.weekStart = t.value;
+      save(); render();
+    } else if (t.id === 'title-input') {
+      state.title = t.value;
+      save(); renderScheduleGrid();
+    }
+  });
+
+  // ---------- Drag and drop ----------
+  var dragData = null;
+
+  document.addEventListener('dragstart', function (e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    dragData = { nurse: chip.dataset.nurse, day: parseInt(chip.dataset.day, 10), shift: chip.dataset.shift };
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', JSON.stringify(dragData)); } catch (err) {}
+  });
+
+  document.addEventListener('dragover', function (e) {
+    var cell = e.target.closest('td.shift-cell');
+    if (!cell) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    cell.classList.add('drop-target');
+  });
+
+  document.addEventListener('dragleave', function (e) {
+    var cell = e.target.closest('td.shift-cell');
+    if (cell) cell.classList.remove('drop-target');
+  });
+
+  document.addEventListener('drop', function (e) {
+    var cell = e.target.closest('td.shift-cell');
+    if (!cell) return;
+    e.preventDefault();
+    cell.classList.remove('drop-target');
+    if (!dragData) return;
+
+    var targetDay = parseInt(cell.dataset.day, 10);
+    var targetShift = cell.dataset.shift;
+
+    // remove from source
+    var src = state.schedule[dragData.day][dragData.shift];
+    var idx = src.indexOf(dragData.nurse);
+    if (idx !== -1) src.splice(idx, 1);
+
+    // add to target (avoid duplicate in same cell)
+    var dest = state.schedule[targetDay][targetShift];
+    if (dest.indexOf(dragData.nurse) === -1) dest.push(dragData.nurse);
+
+    dragData = null;
+    save(); render();
+  });
+
+  // ---------- Init ----------
+  document.getElementById('weekstart-input').value = state.weekStart;
+  document.getElementById('title-input').value = state.title || '';
+  ensureShape();
+  render();
+})();
+</script>
+</body>
+</html>
