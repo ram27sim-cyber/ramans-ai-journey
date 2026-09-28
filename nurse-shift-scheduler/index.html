@@ -129,6 +129,16 @@
   #nurse-table td { border-bottom: 1px solid var(--border); }
   #nurse-table input[type="number"] { width: 70px; }
   #nurse-table input[type="text"] { width: 160px; }
+  .dayoff-row { display: flex; gap: 3px; flex-wrap: nowrap; }
+  .dayoff-btn {
+    width: 26px; height: 26px; padding: 0;
+    font-size: 11px; font-weight: 700;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: #fff; color: var(--muted);
+  }
+  .dayoff-btn.active { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .dayoff-btn:hover { background: var(--danger-bg); }
+  .dayoff-btn.active:hover { background: var(--danger); }
   .empty-row td { color: var(--muted); font-style: italic; padding: 14px 8px; }
 
   /* --- Shift types --- */
@@ -210,6 +220,7 @@
     #schedule-table td.shift-cell.understaffed { background: #fdecec !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     #print-header { display: block !important; margin-bottom: 14px; }
     #summary-section { page-break-before: always; }
+    .print-only-text { display: inline !important; }
   }
   #print-header { display: none; }
 
@@ -240,7 +251,7 @@
     </div>
     <div id="help-body" style="display:none;">
       <ol>
-        <li><strong>Add your nurses</strong> below, with how many shifts they can work per week and how many hours of rest they need between shifts.</li>
+        <li><strong>Add your nurses</strong> below, with how many shifts they can work per week, how many hours of rest they need between shifts, and any specific days they've requested off.</li>
         <li><strong>Set up your shift types</strong> (Morning / Evening / Night are ready to go — edit the times if needed, or add your own).</li>
         <li><strong>Enter staffing needs</strong> — how many nurses you need for each shift, each day of the week.</li>
         <li>Click <strong>Generate Schedule</strong>. The tool fills the week automatically and fairly, respecting rest rules and weekly limits.</li>
@@ -255,7 +266,7 @@
     <div class="card-head">
       <h2><span class="step-badge">1</span>Nurses</h2>
     </div>
-    <p class="hint">Add each nurse on your team, their maximum shifts per week, and the minimum rest (in hours) they need between two shifts.</p>
+    <p class="hint">Add each nurse on your team, their maximum shifts per week, the minimum rest (in hours) they need between two shifts, and click any day letter to mark it as a requested day off for this week.</p>
     <div id="nurse-add-form" class="no-print">
       <div class="field">
         <label for="nurse-name-input">Nurse name</label>
@@ -274,7 +285,7 @@
     <div class="nurse-table-wrap">
       <table id="nurse-table">
         <thead>
-          <tr><th>Name</th><th>Max shifts / week</th><th>Min rest (hrs)</th><th>Assigned this week</th><th></th></tr>
+          <tr><th>Name</th><th>Max shifts / week</th><th>Min rest (hrs)</th><th>Days off requested</th><th>Assigned this week</th><th></th></tr>
         </thead>
         <tbody id="nurse-table-body"></tbody>
       </table>
@@ -440,6 +451,9 @@
         if (validIds.indexOf(id) === -1) delete state.requirements[d][id];
       });
     }
+    state.nurses.forEach(function (n) {
+      if (!Array.isArray(n.daysOff)) n.daysOff = [];
+    });
     // drop nurse ids from schedule that no longer exist in roster
     var nurseIds = state.nurses.map(function (n) { return n.id; });
     for (var d2 = 0; d2 < 7; d2++) {
@@ -495,6 +509,10 @@
     var others = getNurseShiftInstances(nurseId, day, shiftTypeId);
     var warnings = [];
 
+    if (nurse.daysOff && nurse.daysOff.indexOf(day) !== -1) {
+      warnings.push('Requested this day off');
+    }
+
     if (others.some(function (o) { return o.day === day; })) {
       warnings.push('Already working another shift this day');
     }
@@ -525,6 +543,7 @@
     var nurse = state.nurses.filter(function (n) { return n.id === nurseId; })[0];
     if (!nurse) return false;
     if (counts[nurseId] >= nurse.maxShifts) return false;
+    if (nurse.daysOff && nurse.daysOff.indexOf(day) !== -1) return false;
     var thisShift = shiftAbsTimes(day, shiftType);
     var instances = getNurseShiftInstances(nurseId);
     if (instances.some(function (o) { return o.day === day; })) return false;
@@ -629,19 +648,33 @@
   function renderNurses() {
     var body = document.getElementById('nurse-table-body');
     if (state.nurses.length === 0) {
-      body.innerHTML = '<tr class="empty-row"><td colspan="5">No nurses added yet. Use the form above to add your first nurse.</td></tr>';
+      body.innerHTML = '<tr class="empty-row"><td colspan="6">No nurses added yet. Use the form above to add your first nurse.</td></tr>';
       return;
     }
     var assignedCounts = {};
     state.nurses.forEach(function (n) { assignedCounts[n.id] = getNurseShiftInstances(n.id).length; });
+    var dates = weekDates();
 
     body.innerHTML = state.nurses.map(function (n) {
       var count = assignedCounts[n.id];
       var over = count > n.maxShifts;
+      var daysOff = n.daysOff || [];
+      var dayoffButtons = DAY_NAMES.map(function (label, d) {
+        var active = daysOff.indexOf(d) !== -1;
+        return '<button type="button" class="dayoff-btn' + (active ? ' active' : '') + ' no-print" ' +
+          'data-action="toggle-dayoff" data-id="' + n.id + '" data-day="' + d + '" ' +
+          'title="' + (active ? 'Requested off: ' : 'Click to request off: ') + label + ' ' + fmtDate(dates[d]) + '">' +
+          label.charAt(0) + '</button>';
+      }).join('');
+      var dayoffPrintText = daysOff.length
+        ? daysOff.slice().sort().map(function (d) { return DAY_NAMES[d]; }).join(', ')
+        : '—';
+
       return '<tr>' +
         '<td><input type="text" value="' + escapeHtml(n.name) + '" data-change="nurse-name" data-id="' + n.id + '"></td>' +
         '<td><input type="number" min="0" max="14" value="' + n.maxShifts + '" data-change="nurse-max" data-id="' + n.id + '"></td>' +
         '<td><input type="number" min="0" max="48" value="' + n.minRest + '" data-change="nurse-rest" data-id="' + n.id + '"></td>' +
+        '<td><div class="dayoff-row no-print">' + dayoffButtons + '</div><span class="print-only-text" style="display:none;">' + dayoffPrintText + '</span></td>' +
         '<td>' + count + (over ? ' <span style="color:var(--danger);font-weight:700;">⚠ over limit</span>' : '') + '</td>' +
         '<td class="no-print"><button class="small danger" data-action="remove-nurse" data-id="' + n.id + '">Remove</button></td>' +
         '</tr>';
@@ -805,7 +838,10 @@
         var shiftsToday = state.shiftTypes.filter(function (st) {
           return (state.schedule[d][st.id] || []).indexOf(n.id) !== -1;
         }).map(function (st) { return st.name; });
-        row.push(shiftsToday.join(' + '));
+        var requestedOff = (n.daysOff || []).indexOf(d) !== -1;
+        var cellText = shiftsToday.join(' + ');
+        if (requestedOff) cellText = cellText ? cellText + ' (requested off!)' : 'OFF (requested)';
+        row.push(cellText);
       }
       rows.push(row);
     });
@@ -861,7 +897,8 @@
         id: uid(),
         name: name,
         maxShifts: Math.max(0, parseInt(maxInput.value, 10) || 0),
-        minRest: Math.max(0, parseInt(restInput.value, 10) || 0)
+        minRest: Math.max(0, parseInt(restInput.value, 10) || 0),
+        daysOff: []
       });
       nameInput.value = '';
       nameInput.focus();
@@ -871,6 +908,14 @@
       var nurse = state.nurses.filter(function (n) { return n.id === id; })[0];
       if (!nurse || !confirm('Remove ' + nurse.name + '? This will also remove them from any shifts.')) return;
       state.nurses = state.nurses.filter(function (n) { return n.id !== id; });
+      save(); render();
+    } else if (action === 'toggle-dayoff') {
+      var nId = btn.dataset.id, dDay = parseInt(btn.dataset.day, 10);
+      var nn = state.nurses.filter(function (n) { return n.id === nId; })[0];
+      if (!nn) return;
+      if (!Array.isArray(nn.daysOff)) nn.daysOff = [];
+      var pos = nn.daysOff.indexOf(dDay);
+      if (pos === -1) nn.daysOff.push(dDay); else nn.daysOff.splice(pos, 1);
       save(); render();
     } else if (action === 'add-shifttype') {
       var color = SHIFT_COLORS[state.shiftTypes.length % SHIFT_COLORS.length];
