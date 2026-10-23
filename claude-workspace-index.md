@@ -8,12 +8,12 @@ This is the single map of every active Claude-related project: what it is, where
 
 | Project | Where it lives | Status |
 | --- | --- | --- |
-| Decoding the ICU (ebook) | Mac: ~/Documents/Claude Work/icu-family-ebook/ | Manuscript + cover done; next: publish to Amazon KDP |
-| Clinic AI service | Mac: ~/Documents/Claude Work/clinic-ai-service/ | Pre-build; no working demo yet |
-| YouTube channel | Mac: ~/Documents/Claude Work/youtube-channel/ | Planning; audience angle (investor vs. patient) undecided |
-| Gardening app | Mac: ~/Documents/Claude Work/gardening-app/ (built in Lovable) | In build — class project |
-| Wardrobe organiser app | Mac: ~/Documents/Claude Work/wardrobe-organiser-app/ (Lovable + Replit) | In build; on-device-vs-cloud storage conflict unresolved |
-| Reading summarizer workflow | Mac: ~/Documents/Claude Work/reading-summarizer-workflow/ | Prompt tested on 5 links; scaling to full automation |
+| Decoding the ICU (ebook) | Dropbox: Claude Projects/icu-family-ebook/ (synced Mac + Windows) | Manuscript + cover done; next: publish to Amazon KDP |
+| Clinic AI service | Dropbox: Claude Projects/clinic-ai-service/ (synced Mac + Windows) | Pre-build; no working demo yet |
+| YouTube channel | Dropbox: Claude Projects/youtube-channel/ (synced Mac + Windows) | Planning; audience angle (investor vs. patient) undecided |
+| Gardening app | Dropbox: Claude Projects/gardening-app/ (built in Lovable; synced Mac + Windows) | In build — class project |
+| Wardrobe organiser app | Dropbox: Claude Projects/wardrobe-organiser-app/ (Lovable + Replit; synced Mac + Windows) | In build; on-device-vs-cloud storage conflict unresolved |
+| Reading summarizer workflow | Dropbox: Claude Projects/reading-summarizer-workflow/ (synced Mac + Windows) | Prompt tested on 5 links; scaling to full automation |
 | ramans-ai-journey (this GitHub repo) | Windows: C:\Users\Raman\Documents\ramans-ai-journey | Active repo; README lists nurse-shift-scheduler |
 | Riley (Vapi voice agent) | Hosted (Vapi + Val Town); no local folder | Working; "send texts" feature still pending |
 | Jarvis (desktop voice assistant) | Decommissioned 2026-10-08 | No files remain anywhere |
@@ -26,8 +26,7 @@ This is the single map of every active Claude-related project: what it is, where
 
 ## Known gaps
 
-- Two near-duplicate memory entries exist for the n8n project (n8n-automation.md and n8n-automations.md) — should be merged.
-- The six Mac "Claude Work" folders predate the Dropbox convention adopted 2026-10-14; new projects go to Dropbox, but these six haven't been migrated — worth deciding whether to move them.
+- Resolved 2026-10-23: the n8n memory duplicate was merged, and all six Mac-only project folders were migrated into Dropbox `Claude Projects/`. Dropbox is now the single standard location for every project, on every machine; Google Drive stays connected for Gmail/Calendar only, not file storage.
 - This index is a snapshot as of 2026-10-23. It will go stale unless updated whenever a project's status changes materially — treat it as a map to re-check, not a live feed.
 
 ## Companion copy
